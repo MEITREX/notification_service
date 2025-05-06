@@ -1,58 +1,58 @@
 version: "3"
 
 services:
-  database-template:
+  database-notification:
     image: postgres:alpine
     restart: unless-stopped
     expose:
-      - 1032
+      - 3132
     ports:
-      - "1032:5432"
+      - "3132:5432"
     volumes:
-      - templatedata:/var/lib/postgresql/data
+      - notificationdata:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=root
       - POSTGRES_PASSWORD=root
-      - POSTGRES_DB=templatedatabase
-  app-template:
+      - POSTGRES_DB=notification_service
+  app-notification:
     build:
-      context: ./../template-microservice # necessary because otherwise docker-compose overrides the context path when merging multiple docker-compose.yml files
+      context: ./../notification_service # necessary because otherwise docker-compose overrides the context path when merging multiple docker-compose.yml files
       dockerfile: Dockerfile
     restart: always
-    container_name: template_microservice
+    container_name: notification_service
     expose:
-      - 1000
-      - 1001
+      - 3100
+      - 3101
     ports:
       - "1000:1000"
       - "1001:1001"
     depends_on:
-      - database-template
+      - database-notification
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://database-template:5432/templatedatabase
+      SPRING_DATASOURCE_URL: jdbc:postgresql://database-notification:5432/notificationdatabase
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
-  dapr-template:
+  dapr-notification:
     image: "daprio/daprd"
     command: [
       "./daprd",
-      "--app-id", "template_service",
+      "--app-id", "notification_service",
       "--app-port", "1001",
       "--dapr-http-port", "1000",
       "--resources-path", "./components"
     ]
     volumes:
-      - "./../template-microservice/components/:/components" # Mount our components folder for the runtime to use. The mounted location must match the --resources-path argument.
+      - "./../notification_service/components/:/components" # Mount our components folder for the runtime to use. The mounted location must match the --resources-path argument.
     depends_on:
-      - app-template
+      - app-notification
       - redis
-    network_mode: "service:app-template"
+    network_mode: "service:app-notification"
   redis:
     image: "redis:alpine"
     expose:
       - "6379"
 volumes:
-  templatedata:
+  notificationdata:
   testdata:
 networks:
   default:
