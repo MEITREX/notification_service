@@ -1,4 +1,4 @@
-package de.unistuttgart.iste.meitrex.template;
+package de.unistuttgart.iste.meitrex.notification_service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
@@ -13,11 +13,11 @@ import java.util.Arrays;
  */
 @SpringBootApplication
 @Slf4j
-public class TemplateForMicroservicesApplication {
+public class NotificationServicesApplication {
 
     public static void main(String[] args) {
         Arrays.stream(args).map(arg -> "Received argument: " + arg).forEach(log::info);
-        SpringApplication.run(TemplateForMicroservicesApplication.class, args);
+        SpringApplication.run(NotificationServicesApplication.class, args);
     }
 
 }

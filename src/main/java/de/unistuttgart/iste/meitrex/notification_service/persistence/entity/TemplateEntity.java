@@ -1,4 +1,4 @@
-package de.unistuttgart.iste.meitrex.template.persistence.entity;
+package de.unistuttgart.iste.meitrex.notification_service.persistence.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

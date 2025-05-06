@@ -2,34 +2,35 @@ version: "3"
 
 services:
   database-notification:
-    image: postgres:alpine
+    image: pgvector/pgvector:pg16
     restart: unless-stopped
     expose:
-      - 3132
+      - 5432
     ports:
-      - "3132:5432"
+      - "5432:5432"
     volumes:
-      - notificationdata:/var/lib/postgresql/data
+      - dbdata:/var/lib/postgresql/data
+      - ./../notification_service/pg-init-scripts:/docker-entrypoint-initdb.d
     environment:
       - POSTGRES_USER=root
       - POSTGRES_PASSWORD=root
-      - POSTGRES_DB=notification_service
+      - POSTGRES_CREATE_DB_GAMIFICATION_SERVICE=notification_service
   app-notification:
     build:
       context: ./../notification_service # necessary because otherwise docker-compose overrides the context path when merging multiple docker-compose.yml files
       dockerfile: Dockerfile
-    restart: always
+    restart: unless-stopped
     container_name: notification_service
     expose:
       - 3100
       - 3101
     ports:
-      - "1000:1000"
-      - "1001:1001"
+      - "3100:3100"
+      - "3101:3101"
     depends_on:
       - database-notification
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://database-notification:5432/notificationdatabase
+      SPRING_DATASOURCE_URL: jdbc:postgresql://database:5432/notification_service
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
   dapr-notification:
@@ -37,8 +38,8 @@ services:
     command: [
       "./daprd",
       "--app-id", "notification_service",
-      "--app-port", "1001",
-      "--dapr-http-port", "1000",
+      "--app-port", "3101",
+      "--dapr-http-port", "3100",
       "--resources-path", "./components"
     ]
     volumes:
@@ -53,6 +54,7 @@ services:
       - "6379"
 volumes:
   notificationdata:
+  dbdata:
   testdata:
 networks:
   default:

@@ -73,8 +73,18 @@ graphqlCodegen {
     fieldsWithResolvers = ["@OnDemand"]
 }
 
-tasks.register('generateApiDocs', Exec) {
-    commandLine 'cmd', '/c', 'generate_api_doc.bat'
+tasks.register('generateApiDocs') {
+     doLast {
+         try {
+             exec {
+                 commandLine 'cmd', '/c', 'generate_api_doc.bat'
+             }
+         } catch (Exception e) {
+             // Catch errors when running api documentation generation.
+             // Errors during doc generation shouldn't cause the whole build to fail
+             println "Failed to generate API documentation: ${e.message}"
+         }
+     }
 }
 
 tasks.named('assemble') {
