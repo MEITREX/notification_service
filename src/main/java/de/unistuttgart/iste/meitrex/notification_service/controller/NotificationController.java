@@ -12,14 +12,14 @@ import java.util.List;
 @Slf4j
 @Controller
 @RequiredArgsConstructor
-public class TemplateController {
+public class NotificationController {
 
-    private final TemplateService notification_serviceService;
+    private final TemplateService notificationService;
 
     @QueryMapping
     public List<Template> notification_services() {
         log.info("Request for all notification_services");
 
-        return notification_serviceService.getAllTemplates();
+        return notificationService.getAllTemplates();
     }
 }
