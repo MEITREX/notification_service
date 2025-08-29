@@ -1,7 +1,7 @@
 package de.unistuttgart.iste.meitrex.notification_service.controller;
 
 import de.unistuttgart.iste.meitrex.generated.dto.Template;
-import de.unistuttgart.iste.meitrex.notification_service.service.TemplateService;
+import de.unistuttgart.iste.meitrex.notification_service.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -14,7 +14,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationController {
 
-    private final TemplateService notificationService;
+    private final NotificationService notificationService;
 
     @QueryMapping
     public List<Template> notification_services() {

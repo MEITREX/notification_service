@@ -4,13 +4,11 @@
 # this can be done in a separate files as long as they are in this folder and
 # end with .graphqls
 
-
-# example
-type Template {
-  id: ID!
-  name: String!
-}
-
-type Query {
-  templates: [Template]
+type Notification {
+  id: UUID!
+  title: String!
+  description: String!
+  href: String!
+  read: Boolean!
+  createdAt: DateTime!
 }
