@@ -1,6 +1,6 @@
 package de.unistuttgart.iste.meitrex.notification_service.controller;
 
-import de.unistuttgart.iste.meitrex.generated.dto.Template;
+import de.unistuttgart.iste.meitrex.generated.dto.Notification;
 import de.unistuttgart.iste.meitrex.notification_service.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +17,7 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @QueryMapping
-    public List<Template> notification_services() {
+    public List<Notification> notification_services() {
         log.info("Request for all notification_services");
 
         return notificationService.getAllTemplates();

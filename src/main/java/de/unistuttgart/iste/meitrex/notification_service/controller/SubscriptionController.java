@@ -30,4 +30,5 @@ public class SubscriptionController {
             log.info("Received notification-event: {}", event);
             notificationService.handleNotificationEvent(event);
         });
+    }
 }
