@@ -27,10 +27,10 @@ public interface NotificationRecipientRepository extends JpaRepository<Notificat
         SELECT COUNT(r) FROM NotificationRecipientEntity r
         WHERE r.userId = :userId AND r.status = :status
     """)
-    long countByUserIdAndStatus(@Param("userId") UUID userId, @Param("status") RecipientStatus status);
+    int countByUserIdAndStatus(@Param("userId") UUID userId, @Param("status") RecipientStatus status);
 
     /** Keep for unread badge on the frontend. */
-    default long countUnread(UUID userId) {
+    default int countUnread(UUID userId) {
         return countByUserIdAndStatus(userId, RecipientStatus.UNREAD);
     }
 

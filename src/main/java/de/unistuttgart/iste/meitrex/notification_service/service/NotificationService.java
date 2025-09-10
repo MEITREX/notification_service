@@ -71,6 +71,17 @@ public class NotificationService {
     }
 
     /**
+     * Returns all unread notifications count for the given user
+     *
+     * @param userId user id
+     * @return count of unread NotificationData
+     */
+    @Transactional(readOnly = true)
+    public int countUnread(final UUID userId) {
+        return recipientRepository.countUnread(userId);
+    }
+
+    /**
      * Returns all notifications for the given user excluding DO_NOT_NOTIFY entries.
      * The "read" flag is derived from recipient status.
      *
@@ -125,20 +136,16 @@ public class NotificationService {
             return;
         }
 
-        // 1) Resolve recipient candidates
         final List<UUID> candidates = resolveRecipients(event);
         if (candidates.isEmpty()) {
             log.info("No recipients resolved for event: {}", safeEventTitle(event));
             return;
         }
 
-        // 2) Fetch settings per user
         final Map<UUID, Settings> settingsByUser = fetchSettingsForUsers(candidates);
 
-        // 3) Persist the notification core entity
         final NotificationEntity saved = notificationRepository.save(
                 NotificationEntity.builder()
-                        .courseId(event.getCourseId())
                         .title(nvl(event.getTitle(), "Notification"))
                         .description(nvl(event.getMessage(), ""))
                         .href(nvl(event.getLink(), "/"))
@@ -146,7 +153,6 @@ public class NotificationService {
                         .build()
         );
 
-        // 4) Decide per-user status based on settings + serverSource
         final ServerSource source = event.getServerSource();
         final List<NotificationRecipientEntity> rows = candidates.stream()
                 .map(uid -> {
@@ -162,7 +168,6 @@ public class NotificationService {
 
         recipientRepository.saveAll(rows);
 
-        // 5) Publish to sinks for UNREAD recipients only
         final NotificationData dto = notificationMapper.entityToDto(saved);
         dto.setRead(false);
         rows.stream()
@@ -240,7 +245,6 @@ public class NotificationService {
             return RecipientStatus.UNREAD;
         }
 
-        // IMPORTANT: this 'Notification' is the one generated from user-service schema.
         final de.unistuttgart.iste.meitrex.generated.dto.Notification notificationData =
                 settings.getNotification();
 

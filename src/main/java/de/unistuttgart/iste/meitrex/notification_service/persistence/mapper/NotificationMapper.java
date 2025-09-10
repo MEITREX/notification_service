@@ -21,7 +21,6 @@ public class NotificationMapper {
 
         final NotificationData dto = new NotificationData();
         dto.setId(entity.getId());
-        dto.setCourseId(entity.getCourseId());
         dto.setTitle(entity.getTitle());
         dto.setDescription(entity.getDescription());
         dto.setHref(entity.getHref());

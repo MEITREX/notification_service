@@ -1,8 +1,9 @@
 version: "3"
 
 services:
-  database-notification:
+  database:
     image: pgvector/pgvector:pg16
+    command: -c 'max_connections=500'
     restart: unless-stopped
     expose:
       - 5432
@@ -14,7 +15,7 @@ services:
     environment:
       - POSTGRES_USER=root
       - POSTGRES_PASSWORD=root
-      - POSTGRES_CREATE_DB_GAMIFICATION_SERVICE=notification_service
+      - POSTGRES_CREATE_DB_NOTIFICATION_SERVICE=notification_service
   app-notification:
     build:
       context: ./../notification_service # necessary because otherwise docker-compose overrides the context path when merging multiple docker-compose.yml files
@@ -28,7 +29,7 @@ services:
       - "3100:3100"
       - "3101:3101"
     depends_on:
-      - database-notification
+      - database
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://database:5432/notification_service
       SPRING_DATASOURCE_USERNAME: root
@@ -53,7 +54,6 @@ services:
     expose:
       - "6379"
 volumes:
-  notificationdata:
   dbdata:
   testdata:
 networks:

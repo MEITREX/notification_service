@@ -10,7 +10,8 @@ sourceControl {
     gitRepository(uri('https://github.com/MEITREX/course_service')) {
         producesModule('de.unistuttgart.iste.meitrex:course_service')
     }
-    gitRepository(uri('https://github.com/MEITREX/user_service')) {
-        producesModule('de.unistuttgart.iste.meitrex:user_service')
-    }
+    includeBuild('D:/Project/MEITREX/user_service')
+//    gitRepository(uri('https://github.com/MEITREX/user_service')) {
+//        producesModule('de.unistuttgart.iste.meitrex:user_service')
+//    }
 }

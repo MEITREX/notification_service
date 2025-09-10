@@ -15,6 +15,7 @@ type NotificationData  {
 
 type Query {
   notifications(userId: UUID!): [NotificationData !]!
+  countUnread(userId: UUID!): Int!
 }
 
 
@@ -23,7 +24,7 @@ type Subscription {
 }
 
 
-extend type Mutation {
+type Mutation {
   markAllRead(userId: UUID!): Int!
   markOneRead(userId: UUID!, notificationId: UUID!): Int!
 }

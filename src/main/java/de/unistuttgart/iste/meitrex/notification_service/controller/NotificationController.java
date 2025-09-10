@@ -39,13 +39,9 @@ public class NotificationController {
      * @param userId user id
      * @return unread count
      */
-    @QueryMapping
+    @QueryMapping(name = "countUnread")
     public int countUnread(@Argument final UUID userId) {
-        return notificationService
-                .getNotificationsForUser(userId)
-                .stream()
-                .mapToInt(n -> Boolean.TRUE.equals(n.getRead()) ? 0 : 1)
-                .sum();
+        return notificationService.countUnread(userId);
     }
 
     /**

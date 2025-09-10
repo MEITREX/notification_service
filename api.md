@@ -4,9 +4,11 @@
   <summary><strong>Table of Contents</strong></summary>
 
   * [Query](#query)
+  * [Mutation](#mutation)
+  * [Subscription](#subscription)
   * [Objects](#objects)
+    * [NotificationData](#notificationdata)
     * [PaginationInfo](#paginationinfo)
-    * [Template](#template)
   * [Inputs](#inputs)
     * [DateTimeFilter](#datetimefilter)
     * [IntFilter](#intfilter)
@@ -18,7 +20,6 @@
     * [Boolean](#boolean)
     * [Date](#date)
     * [DateTime](#datetime)
-    * [ID](#id)
     * [Int](#int)
     * [LocalTime](#localtime)
     * [String](#string)
@@ -40,14 +41,137 @@
 </thead>
 <tbody>
 <tr>
-<td colspan="2" valign="top"><strong id="query.templates">templates</strong></td>
-<td valign="top">[<a href="#template">Template</a>]</td>
+<td colspan="2" valign="top"><strong id="query.notifications">notifications</strong></td>
+<td valign="top">[<a href="#notificationdata">NotificationData</a>!]!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" align="right" valign="top">userId</td>
+<td valign="top"><a href="#uuid">UUID</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" valign="top"><strong id="query.countunread">countUnread</strong></td>
+<td valign="top"><a href="#int">Int</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" align="right" valign="top">userId</td>
+<td valign="top"><a href="#uuid">UUID</a>!</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+## Mutation
+<table>
+<thead>
+<tr>
+<th align="left">Field</th>
+<th align="right">Argument</th>
+<th align="left">Type</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td colspan="2" valign="top"><strong id="mutation.markallread">markAllRead</strong></td>
+<td valign="top"><a href="#int">Int</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" align="right" valign="top">userId</td>
+<td valign="top"><a href="#uuid">UUID</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" valign="top"><strong id="mutation.markoneread">markOneRead</strong></td>
+<td valign="top"><a href="#int">Int</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" align="right" valign="top">userId</td>
+<td valign="top"><a href="#uuid">UUID</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" align="right" valign="top">notificationId</td>
+<td valign="top"><a href="#uuid">UUID</a>!</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+## Subscription
+<table>
+<thead>
+<tr>
+<th align="left">Field</th>
+<th align="right">Argument</th>
+<th align="left">Type</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td colspan="2" valign="top"><strong id="subscription.notificationadded">notificationAdded</strong></td>
+<td valign="top"><a href="#notificationdata">NotificationData</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" align="right" valign="top">userId</td>
+<td valign="top"><a href="#uuid">UUID</a>!</td>
 <td></td>
 </tr>
 </tbody>
 </table>
 
 ## Objects
+
+### NotificationData
+
+<table>
+<thead>
+<tr>
+<th align="left">Field</th>
+<th align="right">Argument</th>
+<th align="left">Type</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td colspan="2" valign="top"><strong id="notificationdata.id">id</strong></td>
+<td valign="top"><a href="#uuid">UUID</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" valign="top"><strong id="notificationdata.title">title</strong></td>
+<td valign="top"><a href="#string">String</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" valign="top"><strong id="notificationdata.description">description</strong></td>
+<td valign="top"><a href="#string">String</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" valign="top"><strong id="notificationdata.href">href</strong></td>
+<td valign="top"><a href="#string">String</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" valign="top"><strong id="notificationdata.createdat">createdAt</strong></td>
+<td valign="top"><a href="#datetime">DateTime</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" valign="top"><strong id="notificationdata.read">read</strong></td>
+<td valign="top"><a href="#boolean">Boolean</a>!</td>
+<td></td>
+</tr>
+</tbody>
+</table>
 
 ### PaginationInfo
 
@@ -107,31 +231,6 @@ The total number of pages.
 Whether there is a next page.
 
 </td>
-</tr>
-</tbody>
-</table>
-
-### Template
-
-<table>
-<thead>
-<tr>
-<th align="left">Field</th>
-<th align="right">Argument</th>
-<th align="left">Type</th>
-<th align="left">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td colspan="2" valign="top"><strong id="template.id">id</strong></td>
-<td valign="top"><a href="#id">ID</a>!</td>
-<td></td>
-</tr>
-<tr>
-<td colspan="2" valign="top"><strong id="template.name">name</strong></td>
-<td valign="top"><a href="#string">String</a>!</td>
-<td></td>
 </tr>
 </tbody>
 </table>
@@ -332,10 +431,6 @@ The `Boolean` scalar type represents `true` or `false`.
 ### Date
 
 ### DateTime
-
-### ID
-
-The `ID` scalar type represents a unique identifier, often used to refetch an object or as key for a cache. The ID type appears in a JSON response as a String; however, it is not intended to be human-readable. When expected as an input type, any string (such as `"4"`) or integer (such as `4`) input value will be accepted as an ID.
 
 ### Int
 
