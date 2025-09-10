@@ -21,8 +21,8 @@ import java.util.UUID;
 public class SubscriptionController {
     private final NotificationService notificationService;
 
-    @Topic(name = "notification-event", pubsubName = "gits") // or: DaprTopic.NOTIFICATION_EVENT.getTopic()
-    @PostMapping(path = "/notification-service/notification-event-pubsub")
+    @Topic(name = "notification-event", pubsubName = "gits")
+    @PostMapping(path = "/notification-event-pubsub")
     public Mono<Void> handleNotificationEvent(@RequestBody CloudEvent<NotificationEvent> cloudEvent,
                                               @RequestHeader Map<String, String> headers) {
         return Mono.fromRunnable(() -> {

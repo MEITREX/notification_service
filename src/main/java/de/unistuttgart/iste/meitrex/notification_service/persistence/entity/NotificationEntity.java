@@ -19,9 +19,6 @@ public class NotificationEntity implements IWithId<UUID> {
     private UUID id;
 
     @Column(nullable = false)
-    private UUID userId;
-
-    @Column(nullable = false)
     private String title;
 
     @Column(nullable = false, length = 1000)

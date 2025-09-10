@@ -1,185 +1,286 @@
 package de.unistuttgart.iste.meitrex.notification_service.service;
 
 import de.unistuttgart.iste.meitrex.common.event.NotificationEvent;
-import de.unistuttgart.iste.meitrex.generated.dto.Notification;
+import de.unistuttgart.iste.meitrex.common.event.ServerSource;
+import de.unistuttgart.iste.meitrex.course_service.client.CourseServiceClient;
+import de.unistuttgart.iste.meitrex.generated.dto.CourseMembership;
+import de.unistuttgart.iste.meitrex.generated.dto.NotificationData;
+import de.unistuttgart.iste.meitrex.generated.dto.Settings;
 import de.unistuttgart.iste.meitrex.notification_service.persistence.entity.NotificationEntity;
 import de.unistuttgart.iste.meitrex.notification_service.persistence.entity.NotificationRecipientEntity;
-import de.unistuttgart.iste.meitrex.notification_service.persistence.entity.RecipientStatus;
-import de.unistuttgart.iste.meitrex.notification_service.persistence.mapper.NotificationMapper;
+import de.unistuttgart.iste.meitrex.notification_service.persistence.entity.NotificationRecipientEntity.RecipientStatus;
 import de.unistuttgart.iste.meitrex.notification_service.persistence.repository.NotificationRecipientRepository;
 import de.unistuttgart.iste.meitrex.notification_service.persistence.repository.NotificationRepository;
+import de.unistuttgart.iste.meitrex.notification_service.persistence.mapper.NotificationMapper;
+import de.unistuttgart.iste.meitrex.user_service.client.SettingsServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.reactivestreams.Publisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Sinks;
 
 import java.time.OffsetDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
- * Notification domain service (no bitmap):
- *  - Consume NotificationEvent and fan out to recipients (UNREAD).
- *  - Query user's notifications (with read flag).
- *  - Mark read operations.
- *
- * Storage:
- *   notification (message row)
- *   notification_recipient (join: one row per (notification,user) with status)
+ * Core domain service for notifications: event handling, listing, read state, and live streaming.
+ * Recipient status is decided per user from their settings and the event's serverSource.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationRecipientRepository recipientRepository;
     private final NotificationMapper notificationMapper;
 
-    /** Client to resolve course subscribers when event.userIds is empty. Adjust to your real client. */
     private final CourseServiceClient courseServiceClient;
+    private final SettingsServiceClient settingsServiceClient;
+
+    private final ConcurrentMap<UUID, Sinks.Many<NotificationData>> sinks = new ConcurrentHashMap<>();
+
+    private static final EnumSet<ServerSource> LECTURE_SOURCES =
+            EnumSet.of(ServerSource.COURSE, ServerSource.CHAPTER, ServerSource.CONTENT, ServerSource.MEDIA);
 
     /**
-     * Handle NotificationEvent from other services (the ONLY event type we keep).
-     * Priority: use event.userIds if present; otherwise if courseId present, fetch subscribers from CourseService.
+     * Returns a per-user stream for GraphQL subscription.
+     *
+     * @param userId user id
+     * @return publisher emitting NotificationData for this user
      */
-    @Transactional
-    public void handleNotificationEvent(final NotificationEvent event) {
-        if (event == null) {
-            log.warn("handleNotificationEvent called with null event");
-            return;
-        }
-        final UUID courseId = event.getCourseId();
-
-        // 1) Resolve recipients (userIds first; if empty, try course subscribers)
-        final List<UUID> recipients = resolveRecipients(event);
-        if (recipients.isEmpty()) {
-            log.info("No recipients resolved for NotificationEvent (courseId={}, title={}) → skip.", courseId, event.getTitle());
-            return;
-        }
-
-        // 2) Create the base Notification (courseId may be null for non-course messages)
-        final NotificationEntity notification = NotificationEntity.builder()
-                .id(null)
-                .courseId(courseId) // nullable (e.g., account upgrade, system message)
-                .title(Optional.ofNullable(event.getTitle()).filter(s -> !s.isBlank()).orElse("Notification"))
-                .description(Optional.ofNullable(event.getMessage()).orElse(""))
-                .href(Optional.ofNullable(event.getLink()).orElse("/"))
-                .createdAt(Optional.ofNullable(event.getTimestamp()).orElse(OffsetDateTime.now()))
-                .build();
-
-        final NotificationEntity saved = notificationRepository.save(notification);
-
-        // 3) Fan out recipients as UNREAD (de-duplicate defensively)
-        final List<UUID> uniqueRecipients = new ArrayList<>(new LinkedHashSet<>(recipients));
-        final List<NotificationRecipientEntity> rows = uniqueRecipients.stream()
-                .map(uid -> NotificationRecipientEntity.builder()
-                        .id(null)
-                        .userId(uid)
-                        .notification(saved)
-                        .status(RecipientStatus.UNREAD)
-                        .readAt(null)
-                        .build())
-                .toList();
-
-        try {
-            recipientRepository.saveAll(rows);
-        } catch (DataIntegrityViolationException ex) {
-            // In case of concurrent duplicates (unique(notification_id,user_id)) just log and proceed.
-            log.warn("Duplicate recipients while saving (notificationId={}): {}", saved.getId(), ex.getMessage());
-        }
-
-        log.info("Notification(id={}) stored for {} recipients (courseId={})", saved.getId(), uniqueRecipients.size(), courseId);
+    public Publisher<NotificationData> notificationAddedStream(final UUID userId) {
+        return sinks.computeIfAbsent(userId, k -> Sinks.many().multicast().onBackpressureBuffer())
+                .asFlux();
     }
 
     /**
-     * Query notifications for a user, newest-first, with read flag on DTO.
+     * Publishes a newly created notification to a specific user's stream if present.
+     *
+     * @param userId user id
+     * @param dto    notification dto
+     */
+    private void publishToUser(final UUID userId, final NotificationData dto) {
+        final var sink = sinks.get(userId);
+        if (sink != null) {
+            sink.tryEmitNext(dto);
+        }
+    }
+
+    /**
+     * Returns all notifications for the given user excluding DO_NOT_NOTIFY entries.
+     * The "read" flag is derived from recipient status.
+     *
+     * @param userId user id
+     * @return list of NotificationData
      */
     @Transactional(readOnly = true)
-    public List<Notification> getNotificationsForUser(final UUID userId) {
-        if (userId == null) return List.of();
-
-        return recipientRepository.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
+    public List<NotificationData> getNotificationsForUser(final UUID userId) {
+        return recipientRepository
+                .findAllByUserIdAndStatusNotOrderByCreatedAtDesc(userId, RecipientStatus.DO_NOT_NOTIFY)
+                .stream()
                 .map(rec -> {
-                    final Notification dto = notificationMapper.entityToDto(rec.getNotification());
-                    dto.setRead(rec.getStatus() == RecipientStatus.READ);
+                    final var dto = notificationMapper.entityToDto(rec.getNotification());
+                    dto.setRead(rec.getStatus() != RecipientStatus.UNREAD);
                     return dto;
                 })
                 .toList();
     }
 
     /**
-     * Mark a single notification as READ for a user.
-     * If you have a direct repository method, prefer that; here we filter the user's list.
+     * Marks all unread notifications as read for the given user.
+     *
+     * @param userId user id
+     * @return affected rows
      */
     @Transactional
-    public void markRead(final UUID notificationId, final UUID userId) {
-        if (notificationId == null || userId == null) return;
-
-        recipientRepository.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
-                .filter(r -> notificationId.equals(r.getNotification().getId()))
-                .findFirst()
-                .ifPresent(r -> {
-                    if (r.getStatus() != RecipientStatus.READ) {
-                        r.setStatus(RecipientStatus.READ);
-                        r.setReadAt(OffsetDateTime.now());
-                        recipientRepository.save(r);
-                    }
-                });
+    public int markAllRead(final UUID userId) {
+        return recipientRepository.markAllRead(userId);
     }
 
     /**
-     * Mark all notifications as READ for the given user.
-     * If you added a bulk update in repository, call it; otherwise do simple loop.
+     * Marks a single notification as read for the given user.
+     *
+     * @param userId user id
+     * @param notificationId notification id
+     * @return 0 or 1 depending on whether a row was affected
      */
     @Transactional
-    public void markAllRead(final UUID userId) {
-        if (userId == null) return;
-
-        // Fast path if you created a bulk update:
-        // recipientRepository.markAllRead(userId);
-
-        // Fallback: load & update
-        recipientRepository.findAllByUserIdOrderByCreatedAtDesc(userId).forEach(r -> {
-            if (r.getStatus() != RecipientStatus.READ) {
-                r.setStatus(RecipientStatus.READ);
-                r.setReadAt(OffsetDateTime.now());
-                recipientRepository.save(r);
-            }
-        });
+    public int markOneRead(final UUID userId, final UUID notificationId) {
+        return recipientRepository.markOneRead(userId, notificationId);
     }
 
-    // ---------- helpers ----------
+    /**
+     * Handles an incoming NotificationEvent: resolves recipients, fetches settings, persists per-user status,
+     * and publishes to subscribers (UNREAD only).
+     *
+     * @param event incoming event
+     */
+    @Transactional
+    public void handleNotificationEvent(final NotificationEvent event) {
+        if (event == null) {
+            return;
+        }
+
+        // 1) Resolve recipient candidates
+        final List<UUID> candidates = resolveRecipients(event);
+        if (candidates.isEmpty()) {
+            log.info("No recipients resolved for event: {}", safeEventTitle(event));
+            return;
+        }
+
+        // 2) Fetch settings per user
+        final Map<UUID, Settings> settingsByUser = fetchSettingsForUsers(candidates);
+
+        // 3) Persist the notification core entity
+        final NotificationEntity saved = notificationRepository.save(
+                NotificationEntity.builder()
+                        .courseId(event.getCourseId())
+                        .title(nvl(event.getTitle(), "Notification"))
+                        .description(nvl(event.getMessage(), ""))
+                        .href(nvl(event.getLink(), "/"))
+                        .createdAt(event.getTimestamp() != null ? event.getTimestamp() : OffsetDateTime.now())
+                        .build()
+        );
+
+        // 4) Decide per-user status based on settings + serverSource
+        final ServerSource source = event.getServerSource();
+        final List<NotificationRecipientEntity> rows = candidates.stream()
+                .map(uid -> {
+                    final Settings s = settingsByUser.get(uid);
+                    final RecipientStatus status = decideStatusForUser(s, source);
+                    return NotificationRecipientEntity.builder()
+                            .userId(uid)
+                            .notification(saved)
+                            .status(status)
+                            .build();
+                })
+                .toList();
+
+        recipientRepository.saveAll(rows);
+
+        // 5) Publish to sinks for UNREAD recipients only
+        final NotificationData dto = notificationMapper.entityToDto(saved);
+        dto.setRead(false);
+        rows.stream()
+                .filter(r -> r.getStatus() == RecipientStatus.UNREAD)
+                .forEach(r -> publishToUser(r.getUserId(), dto));
+    }
 
     /**
-     * Resolve recipients with priority:
-     *  1) If event.userIds not empty → use them.
-     *  2) Else if event.courseId not null → query CourseService for subscribers.
-     *  3) Else → empty.
+     * Resolves candidate recipients from the event: prefers explicit userIds; otherwise by course memberships.
+     *
+     * @param event incoming event
+     * @return list of userIds
      */
     private List<UUID> resolveRecipients(final NotificationEvent event) {
-        final List<UUID> userIds = event.getUserIds();
-        if (userIds != null && !userIds.isEmpty()) {
-            return userIds;
+        if (event.getUserIds() != null && !event.getUserIds().isEmpty()) {
+            return event.getUserIds();
         }
-        final UUID courseId = event.getCourseId();
-        if (courseId != null) {
-            try {
-                final List<UUID> fromCourse = courseServiceClient.getUserIdsSubscribedToCourse(courseId);
-                return (fromCourse != null) ? fromCourse : List.of();
-            } catch (Exception ex) {
-                log.error("Failed to fetch subscribers for courseId={}, ex={}", courseId, ex.getMessage());
-                return List.of();
-            }
+        if (event.getCourseId() != null) {
+            return resolveRecipientsFromCourse(event.getCourseId());
         }
         return List.of();
     }
 
-    // ---------- SPI (adapt to your real client bean) ----------
+    /**
+     * Resolves userIds in a course by querying memberships from course-service.
+     *
+     * @param courseId course id
+     * @return distinct user ids or empty list on failure
+     */
+    private List<UUID> resolveRecipientsFromCourse(final UUID courseId) {
+        try {
+            final List<CourseMembership> memberships = courseServiceClient.queryMembershipsInCourse(courseId);
+            if (memberships == null || memberships.isEmpty()) {
+                return List.of();
+            }
+            return memberships.stream()
+                    .map(this::membershipUserId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+        } catch (final Exception e) {
+            log.warn("Failed to query memberships for courseId={}: {}", courseId, e.getMessage());
+            return List.of();
+        }
+    }
 
-    /** Replace with your actual CourseService client interface/bean. */
-    public interface CourseServiceClient {
-        List<UUID> getUserIdsSubscribedToCourse(UUID courseId);
+    /**
+     * Extracts userId from CourseMembership and converts it to UUID.
+     *
+     * @param m membership dto
+     * @return userId as UUID or null if unparsable
+     */
+    private UUID membershipUserId(final CourseMembership m) {
+        if (m == null) return null;
+        try {
+            final Object uid = m.getUserId();
+            if (uid instanceof UUID u) return u;
+            if (uid instanceof String s) return UUID.fromString(s);
+        } catch (final Exception ignored) { }
+        return null;
+    }
+
+    /**
+     * Decides the recipient status from user's settings and the server source.
+     * - Lecture sources require notification.lecture=true
+     * - Non-lecture sources require notification.gamification=true
+     * - Missing settings default to UNREAD (allow)
+     *
+     * @param settings user settings (may be null)
+     * @param source   event's server source
+     * @return resulting status
+     */
+    private RecipientStatus decideStatusForUser(final Settings settings, final ServerSource source) {
+        if (settings == null || settings.getNotification() == null) {
+            return RecipientStatus.UNREAD;
+        }
+
+        // IMPORTANT: this 'Notification' is the one generated from user-service schema.
+        final de.unistuttgart.iste.meitrex.generated.dto.Notification notificationData =
+                settings.getNotification();
+
+        final Boolean lecture = notificationData.getLecture();
+        final Boolean gamification = notificationData.getGamification();
+
+        if (source != null && LECTURE_SOURCES.contains(source)) {
+            return Boolean.TRUE.equals(lecture) ? RecipientStatus.UNREAD : RecipientStatus.DO_NOT_NOTIFY;
+        } else {
+            return Boolean.TRUE.equals(gamification) ? RecipientStatus.UNREAD : RecipientStatus.DO_NOT_NOTIFY;
+        }
+    }
+
+    /**
+     * Fetches settings for a batch of users by calling user-service per user.
+     * Missing or failed entries are omitted (treated as default allow).
+     *
+     * @param userIds user ids
+     * @return map userId -> Settings
+     */
+    private Map<UUID, Settings> fetchSettingsForUsers(final List<UUID> userIds) {
+        final Map<UUID, Settings> map = new HashMap<>(userIds.size());
+        for (UUID uid : userIds) {
+            try {
+                final Settings s = settingsServiceClient.queryUserSettings(uid);
+                if (s != null) {
+                    map.put(uid, s);
+                }
+            } catch (final Exception ex) {
+                log.warn("Failed to fetch settings for userId={}: {}", uid, ex.getMessage());
+            }
+        }
+        return map;
+    }
+
+    private String nvl(final String s, final String d) {
+        return (s == null || s.isBlank()) ? d : s;
+    }
+
+    private String safeEventTitle(final NotificationEvent e) {
+        return (e != null && e.getTitle() != null) ? e.getTitle() : "<no-title>";
     }
 }

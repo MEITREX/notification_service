@@ -4,7 +4,6 @@ import de.unistuttgart.iste.meitrex.common.event.NotificationEvent;
 import de.unistuttgart.iste.meitrex.generated.dto.Notification;
 import de.unistuttgart.iste.meitrex.notification_service.persistence.entity.NotificationEntity;
 import de.unistuttgart.iste.meitrex.notification_service.persistence.entity.NotificationRecipientEntity;
-import de.unistuttgart.iste.meitrex.notification_service.persistence.entity.RecipientStatus;
 import de.unistuttgart.iste.meitrex.notification_service.persistence.mapper.NotificationMapper;
 import de.unistuttgart.iste.meitrex.notification_service.persistence.repository.NotificationRecipientRepository;
 import de.unistuttgart.iste.meitrex.notification_service.persistence.repository.NotificationRepository;
