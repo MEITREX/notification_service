@@ -6,6 +6,7 @@ import de.unistuttgart.iste.meitrex.course_service.client.CourseServiceClient;
 import de.unistuttgart.iste.meitrex.generated.dto.CourseMembership;
 import de.unistuttgart.iste.meitrex.generated.dto.NotificationData;
 import de.unistuttgart.iste.meitrex.generated.dto.Settings;
+import de.unistuttgart.iste.meitrex.generated.dto.UserRoleInCourse;
 import de.unistuttgart.iste.meitrex.notification_service.persistence.entity.NotificationEntity;
 import de.unistuttgart.iste.meitrex.notification_service.persistence.entity.NotificationRecipientEntity;
 import de.unistuttgart.iste.meitrex.notification_service.persistence.entity.NotificationRecipientEntity.RecipientStatus;
@@ -204,6 +205,7 @@ public class NotificationService {
                 return List.of();
             }
             return memberships.stream()
+                    //.filter(m -> m.getRole() == UserRoleInCourse.STUDENT)
                     .map(this::membershipUserId)
                     .filter(Objects::nonNull)
                     .distinct()
@@ -250,7 +252,7 @@ public class NotificationService {
 
         final Boolean lecture = notificationData.getLecture();
         final Boolean gamification = notificationData.getGamification();
-
+        log.info("he want to sub notify: {}", lecture);
         if (source != null && LECTURE_SOURCES.contains(source)) {
             return Boolean.TRUE.equals(lecture) ? RecipientStatus.UNREAD : RecipientStatus.DO_NOT_NOTIFY;
         } else {

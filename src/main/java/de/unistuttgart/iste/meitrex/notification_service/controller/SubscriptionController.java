@@ -21,7 +21,7 @@ import java.util.UUID;
 public class SubscriptionController {
     private final NotificationService notificationService;
 
-    @Topic(name = "notification-event", pubsubName = "gits")
+    @Topic(name = "notification-event", pubsubName = "meitrex")
     @PostMapping(path = "/notification-event-pubsub")
     public Mono<Void> handleNotificationEvent(@RequestBody CloudEvent<NotificationEvent> cloudEvent,
                                               @RequestHeader Map<String, String> headers) {
