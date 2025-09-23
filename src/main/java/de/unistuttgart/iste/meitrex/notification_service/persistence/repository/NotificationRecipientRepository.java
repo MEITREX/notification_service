@@ -60,4 +60,20 @@ public interface NotificationRecipientRepository extends JpaRepository<Notificat
     """)
     int markOneRead(@Param("userId") UUID userId,
                     @Param("notificationId") UUID notificationId);
+
+
+    @Modifying
+    @Query("delete from NotificationRecipientEntity r where r.userId = :userId and r.notification.id = :notificationId")
+    int deleteByUserIdAndNotificationId(@Param("userId") UUID userId,
+                                        @Param("notificationId") UUID notificationId);
+
+    @Modifying
+    @Query("delete from NotificationRecipientEntity r where r.userId = :userId")
+    int deleteAllByUserId(@Param("userId") UUID userId);
+
+    @Query("select count(r) from NotificationRecipientEntity r where r.notification.id = :notificationId")
+    long countByNotificationId(@Param("notificationId") UUID notificationId);
+
+    @Query("select distinct r.notification.id from NotificationRecipientEntity r where r.userId = :userId")
+    List<UUID> findNotificationIdsByUserId(@Param("userId") UUID userId);
 }

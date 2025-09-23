@@ -145,14 +145,24 @@ public class NotificationService {
 
         final Map<UUID, Settings> settingsByUser = fetchSettingsForUsers(candidates);
 
+        final String baseTitle = nvl(event.getTitle(), "Notification");
+        String finalTitle = baseTitle;
+        if (event.getCourseId() != null) {
+            final String courseName = getCourseName(event.getCourseId());
+            if (courseName != null) {
+                finalTitle = "[" + courseName + "] " + baseTitle;
+            }
+        }
+
         final NotificationEntity saved = notificationRepository.save(
                 NotificationEntity.builder()
-                        .title(nvl(event.getTitle(), "Notification"))
+                        .title(finalTitle)
                         .description(nvl(event.getMessage(), ""))
                         .href(nvl(event.getLink(), "/"))
                         .createdAt(event.getTimestamp() != null ? event.getTimestamp() : OffsetDateTime.now())
                         .build()
         );
+
 
         final ServerSource source = event.getServerSource();
         final List<NotificationRecipientEntity> rows = candidates.stream()
@@ -205,7 +215,6 @@ public class NotificationService {
                 return List.of();
             }
             return memberships.stream()
-                    //.filter(m -> m.getRole() == UserRoleInCourse.STUDENT)
                     .map(this::membershipUserId)
                     .filter(Objects::nonNull)
                     .distinct()
@@ -213,6 +222,27 @@ public class NotificationService {
         } catch (final Exception e) {
             log.warn("Failed to query memberships for courseId={}: {}", courseId, e.getMessage());
             return List.of();
+        }
+    }
+
+    /**
+     * Resolves userIds in a course by querying memberships from course-service.
+     *
+     * @param courseId course id
+     * @return course name or empty list on failure
+     */
+    private String getCourseName(final UUID courseId) {
+        if (courseId == null) {
+            return null;
+        }
+        try {
+            final de.unistuttgart.iste.meitrex.generated.dto.Course c =
+                    courseServiceClient.queryCourseById(courseId);
+            final String title = (c != null) ? c.getTitle() : null;
+            return (title != null && !title.isBlank()) ? title : null;
+        } catch (final Exception e) {
+            log.warn("Failed to query course title for courseId={}: {}", courseId, e.getMessage());
+            return null;
         }
     }
 
@@ -289,4 +319,46 @@ public class NotificationService {
     private String safeEventTitle(final NotificationEvent e) {
         return (e != null && e.getTitle() != null) ? e.getTitle() : "<no-title>";
     }
+
+    /**
+     * delete one notificationrecipient by userid and notificationId
+     * @param userId
+     * @param notificationId
+     * @return
+     */
+    @Transactional
+    public int deleteOne(final UUID userId, final UUID notificationId) {
+        if (userId == null || notificationId == null) return 0;
+        final int affected = recipientRepository.deleteByUserIdAndNotificationId(userId, notificationId);
+        if (affected > 0) {
+            final long cnt = recipientRepository.countByNotificationId(notificationId);
+            if (cnt == 0L) {
+                try { notificationRepository.deleteById(notificationId); } catch (Exception ignored) {}
+            }
+        }
+        return affected;
+    }
+
+    /**
+     * delete all notificationrecipients by userid
+     * @param userId
+     * @return
+     */
+    @Transactional
+    public int deleteAll(final UUID userId) {
+        if (userId == null) return 0;
+
+        final List<UUID> toCheck = recipientRepository.findNotificationIdsByUserId(userId);
+        final int affected = recipientRepository.deleteAllByUserId(userId);
+
+        for (UUID nid : toCheck) {
+            if (nid == null) continue;
+            final long cnt = recipientRepository.countByNotificationId(nid);
+            if (cnt == 0L) {
+                try { notificationRepository.deleteById(nid); } catch (Exception ignored) {}
+            }
+        }
+        return affected;
+    }
+
 }

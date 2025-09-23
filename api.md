@@ -99,6 +99,31 @@
 <td valign="top"><a href="#uuid">UUID</a>!</td>
 <td></td>
 </tr>
+<tr>
+<td colspan="2" valign="top"><strong id="mutation.deleteonenotification">deleteOneNotification</strong></td>
+<td valign="top"><a href="#int">Int</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" align="right" valign="top">userId</td>
+<td valign="top"><a href="#uuid">UUID</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" align="right" valign="top">notificationId</td>
+<td valign="top"><a href="#uuid">UUID</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" valign="top"><strong id="mutation.deleteallnotifications">deleteAllNotifications</strong></td>
+<td valign="top"><a href="#int">Int</a>!</td>
+<td></td>
+</tr>
+<tr>
+<td colspan="2" align="right" valign="top">userId</td>
+<td valign="top"><a href="#uuid">UUID</a>!</td>
+<td></td>
+</tr>
 </tbody>
 </table>
 

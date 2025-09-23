@@ -27,4 +27,6 @@ type Subscription {
 type Mutation {
   markAllRead(userId: UUID!): Int!
   markOneRead(userId: UUID!, notificationId: UUID!): Int!
+  deleteOneNotification(userId: UUID!, notificationId: UUID!): Int!
+  deleteAllNotifications(userId: UUID!): Int!
 }

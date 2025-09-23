@@ -78,4 +78,14 @@ public class NotificationController {
     public Publisher<NotificationData> notificationAdded(@Argument final UUID userId) {
         return notificationService.notificationAddedStream(userId);
     }
+
+    @MutationMapping
+    public int deleteAllNotifications(@Argument UUID userId) {
+        return notificationService.deleteAll(userId);
+    }
+
+    @MutationMapping
+    public int deleteOneNotification(@Argument UUID userId, @Argument UUID notificationId) {
+        return notificationService.deleteOne(userId, notificationId);
+    }
 }
