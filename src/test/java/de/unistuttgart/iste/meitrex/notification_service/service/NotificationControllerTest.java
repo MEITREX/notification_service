@@ -1,6 +1,5 @@
 package de.unistuttgart.iste.meitrex.notification_service.service;
 
-
 import de.unistuttgart.iste.meitrex.generated.dto.NotificationData;
 import de.unistuttgart.iste.meitrex.notification_service.controller.NotificationController;
 import de.unistuttgart.iste.meitrex.notification_service.service.NotificationService;
@@ -8,8 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.reactivestreams.Publisher;
 
-import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,20 +20,37 @@ class NotificationControllerTest {
     @Mock NotificationService service;
 
     @Test
-    void notifications_delegates() {
-        var c = new NotificationController(service);
-        var uid = UUID.randomUUID();
-        when(service.getNotificationsForUser(uid)).thenReturn(List.of(new NotificationData()));
-        assertThat(c.getNotifications(uid)).hasSize(1);
-        verify(service).getNotificationsForUser(uid);
-    }
-
-    @Test
     void countUnread_delegates() {
         var c = new NotificationController(service);
         var uid = UUID.randomUUID();
-        when(service.countUnread(uid)).thenReturn(5);
-        assertThat(c.countUnread(uid)).isEqualTo(5);
+        when(service.countUnread(uid)).thenReturn(4);
+        assertThat(c.countUnread(uid)).isEqualTo(4);
+    }
+
+    @Test
+    void notificationAdded_delegates() {
+        var c = new NotificationController(service);
+        var uid = UUID.randomUUID();
+        Publisher<NotificationData> p = subscriber -> {};
+        when(service.notificationAddedStream(uid)).thenReturn(p);
+        assertThat(c.notificationAdded(uid)).isSameAs(p);
+    }
+
+    @Test
+    void deleteAll_delegates() {
+        var c = new NotificationController(service);
+        var uid = UUID.randomUUID();
+        when(service.deleteAll(uid)).thenReturn(7);
+        assertThat(c.deleteAllNotifications(uid)).isEqualTo(7);
+    }
+
+    @Test
+    void deleteOne_delegates() {
+        var c = new NotificationController(service);
+        var uid = UUID.randomUUID();
+        var nid = UUID.randomUUID();
+        when(service.deleteOne(uid, nid)).thenReturn(1);
+        assertThat(c.deleteOneNotification(uid, nid)).isEqualTo(1);
     }
 
     @Test
