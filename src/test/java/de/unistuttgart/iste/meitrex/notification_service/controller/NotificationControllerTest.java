@@ -1,7 +1,6 @@
-package de.unistuttgart.iste.meitrex.notification_service.service;
+package de.unistuttgart.iste.meitrex.notification_service.controller;
 
 import de.unistuttgart.iste.meitrex.generated.dto.NotificationData;
-import de.unistuttgart.iste.meitrex.notification_service.controller.NotificationController;
 import de.unistuttgart.iste.meitrex.notification_service.service.NotificationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,4 +68,6 @@ class NotificationControllerTest {
         when(service.markOneRead(uid, nid)).thenReturn(1);
         assertThat(c.markOneRead(uid, nid)).isEqualTo(1);
     }
+
+
 }
