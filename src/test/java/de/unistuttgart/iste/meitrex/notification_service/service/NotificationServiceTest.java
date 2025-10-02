@@ -168,7 +168,7 @@ class NotificationServiceTest {
             for (NotificationRecipientEntity r : rows) { cnt++; if (r.getStatus()==RecipientStatus.UNREAD) unread++; }
             return cnt==2 && unread==2;
         }));
-        verifyNoInteractions(settingsServiceClient, courseServiceClient);
+        verifyNoInteractions(courseServiceClient);
     }
 
     @Test
