@@ -6,6 +6,7 @@ import de.unistuttgart.iste.meitrex.course_service.client.CourseServiceClient;
 import de.unistuttgart.iste.meitrex.generated.dto.CourseMembership;
 import de.unistuttgart.iste.meitrex.generated.dto.NotificationData;
 import de.unistuttgart.iste.meitrex.generated.dto.Settings;
+import de.unistuttgart.iste.meitrex.common.user_handling.LoggedInUser;
 import de.unistuttgart.iste.meitrex.generated.dto.UserRoleInCourse;
 import de.unistuttgart.iste.meitrex.notification_service.persistence.entity.NotificationEntity;
 import de.unistuttgart.iste.meitrex.notification_service.persistence.entity.NotificationRecipientEntity;

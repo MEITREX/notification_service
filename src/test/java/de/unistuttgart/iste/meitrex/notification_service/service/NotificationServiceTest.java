@@ -311,4 +311,6 @@ class NotificationServiceTest {
         assertThat(service.deleteOne(UUID.randomUUID(), null)).isEqualTo(0);
         verifyNoInteractions(recipientRepository);
     }
+
+
 }
