@@ -1,0 +1,32 @@
+# schema file of the microservice
+
+# TODO define data types, queries and mutations
+# this can be done in a separate files as long as they are in this folder and
+# end with .graphqls
+
+type NotificationData  {
+  id: UUID!
+  title: String!
+  description: String!
+  href: String!
+  createdAt: DateTime!
+  read: Boolean!
+}
+
+type Query {
+  notifications(userId: UUID!): [NotificationData !]!
+  countUnread(userId: UUID!): Int!
+}
+
+
+type Subscription {
+  notificationAdded(userId: UUID!): NotificationData !
+}
+
+
+type Mutation {
+  markAllRead(userId: UUID!): Int!
+  markOneRead(userId: UUID!, notificationId: UUID!): Int!
+  deleteOneNotification(userId: UUID!, notificationId: UUID!): Int!
+  deleteAllNotifications(userId: UUID!): Int!
+}
