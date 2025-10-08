@@ -46,7 +46,7 @@ public class NotificationService {
     private final ConcurrentMap<UUID, Sinks.Many<NotificationData>> sinks = new ConcurrentHashMap<>();
 
     private static final EnumSet<ServerSource> LECTURE_SOURCES =
-            EnumSet.of(ServerSource.COURSE, ServerSource.CHAPTER, ServerSource.CONTENT, ServerSource.MEDIA);
+            EnumSet.of(ServerSource.COURSE, ServerSource.CHAPTER, ServerSource.CONTENT, ServerSource.MEDIA, ServerSource.QUIZ, ServerSource.FLASHCARD);
 
     /**
      * Returns a per-user stream for GraphQL subscription.
